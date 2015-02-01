@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include "include/func.h"
 
+/*
 char *lowerCase(char *arg) {
 
 	int i;
@@ -30,7 +32,7 @@ int freqCount(FILE *source, char *string) {
 			fgets(buffer,strlen(string)+1,source); // get the candidate string from file
 			if(strcmp(lowerCase(buffer),string) == 0) // If the strings match, increment the counter
 				counter++;
-			fseek(source,-(strlen(string)-1),SEEK_CUR);
+			fseek(source,-(strlen(string)-1),SEEK_CUR); // Reposition stream position to next character after the matched character
 
 		}
 	}
@@ -39,6 +41,8 @@ int freqCount(FILE *source, char *string) {
 	fseek(source,0,SEEK_SET); // Return stream position indicator to beginning of the file
 	return counter;
 }	
+*/
+
 
 int main(int argc, char *argv[]) {
 
@@ -50,27 +54,22 @@ int main(int argc, char *argv[]) {
 
 	FILE *source = fopen(argv[1],"r");
 	if(source == NULL) {
-		perror("The following error occurred");
+		perror("Error with given file");
 		return 1;
 	}
 
-	int stringArgs;
+	int stringArgs, i, count;
 	stringArgs = argc-2;
 	char *substrings[stringArgs];
 
-	int i;
-	for(i = 2; i < argc; i++) {
+	for(i = 2; i < argc; i++) 
 		substrings[i-2] = lowerCase(argv[i]);
-	}
+	
 
-	int count;
 	for(i = 0; i < stringArgs; i++) {
 		count = freqCount(source,substrings[i]);
 		printf("%u\n",count);
 	}	
-
-
-
 
 	fclose(source);
 	return 0;

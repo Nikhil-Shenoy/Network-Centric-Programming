@@ -1,18 +1,24 @@
 CC=gcc
-#CFLAGS=-I
-#DEPS=
+IDIR = include
+CFLAGS=-I$(IDIR)
 
-%.o: %.c 
+_DEPS = func.h
+DEPS= $(patsubst %,$(IDIR)/%,$(_DEPS))
+
+ODIR=obj
+_OBJ = counter.o func.o
+OBJ = $(patsubst %, $(ODIR)/%,$(_OBJ))
+
+$(ODIR)/%.o: %.c $(DEPS)
 	$(CC) -c -o $@ $<
 
-counter: counter.o
-	gcc -o counter counter.o
+counter: $(OBJ)
+	gcc -o $@ $^ $(CFLAGS)
 
 debug: counter.c
 	gcc -g counter.c
 	gdb a.out
 
 clean:
+	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~
 	rm counter
-	rm *.o
-	rm a.out
