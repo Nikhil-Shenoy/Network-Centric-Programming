@@ -18,6 +18,7 @@ char *lowerCase(char *arg) {
         return arg;
 }
 
+
 // Error function
 void error() {
 	perror("Error");

@@ -15,8 +15,8 @@ $(ODIR)/%.o: %.c $(DEPS)
 counter: $(OBJ)
 	gcc -o $@ $^ $(CFLAGS)
 
-debug: counter.c
-	gcc -g counter.c
+debug: counter.c func.c include/func.h
+	gcc -g counter.c func.c include/func.h
 	gdb a.out
 
 clean:
