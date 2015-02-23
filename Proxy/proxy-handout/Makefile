@@ -10,9 +10,10 @@ OBJS = proxy.o csapp.o
 all: proxy
 
 proxy: $(OBJS)
+	$(CC) -o proxy $(OBJS) $(LDFLAGS)
 
 csapp.o: csapp.c
-	$(CC) $(CFLAGS) -c csapp.c
+	$(CC) $(CFLAGS) -c csapp.c 
 
 proxy.o: proxy.c
 	$(CC) $(CFLAGS) -c proxy.c

@@ -1,0 +1,7 @@
+1) Write proxy server that accepts a connection from a web browser and simply prints the entire request message from the web-browser on the screen.
+
+2) Extend the server from 1 to extract the browswer IP and URL information from the request message. Open a log file and write this information into a file, instead of printing the message to the screen. Use the provided function to format the output. Set size to 0, since it is unknown at this point
+
+3) Write separate client that takes a URL as input and prints out the web server response for that URL as well as the size of the response in bytes.
+
+4) Combine the server and client into a single program. Instead of having the client print the output on the screen, feed it back to the web browser.
