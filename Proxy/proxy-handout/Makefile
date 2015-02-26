@@ -17,6 +17,9 @@ csapp.o: csapp.c
 
 proxy.o: proxy.c
 	$(CC) $(CFLAGS) -c proxy.c
+
+client: client.c
+	$(CC) $(CFLAGS) -o client client.c csapp.h csapp.c $(LDFLAGS)
 clean:
-	rm -f *~ *.o proxy 
+	rm -f *~ *.o proxy client
 
