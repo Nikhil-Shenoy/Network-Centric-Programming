@@ -179,21 +179,32 @@ int main(int argc, char **argv)
         printf("Ready to write to client file descriptor\n");
 
 	// Create request to server
+	/*
 	char *endRequest;
 	endRequest = strstr(request,"User-Agent:");
 	*endRequest = '\r';
 	*(endRequest+1) = '\n';
 	*(endRequest+2) = '\0';
-
+	*/
 	char initialResponse[MAXLINE];	
+	printf("Proxy sent request to host\n");
         Rio_writen(clientfd,request,strlen(request));
-        read(clientfd,initialResponse,MAXLINE); // Only read gets the actual content. Rio_readlineb does not 
-        /*
-                We extract the content size from the initial response. This will be in bytes.
-                Since we know how many bytes are in the content, we can create a char array of the same size to send the information back.
-        */
 
-        // Make into findContentLength()
+	char Response[1000];
+	while((bytesRead = read(clientfd,Response,1000)) > 0) 
+		write(connfd,Response,bytesRead);
+
+	printf("Done with the sending\n");
+
+
+	
+	
+
+	/*	
+        read(clientfd,initialResponse,MAXLINE); 
+	// Only read gets the actual content. Rio_readlineb does not 
+	printf("Proxy received response from host\n");
+                // Make into findContentLength()
 
         int contentLength;
         contentLength = findContentLength(initialResponse);
@@ -201,30 +212,33 @@ int main(int argc, char **argv)
 
         // Create the response in one large character array
 //      char response[strlen(buf) + contentLength];
+	printf("Making space for the response...\n");
         char *response = (char *)malloc((strlen(initialResponse) + contentLength)*sizeof(char));
+	//char *response = (char *)malloc(10000000*sizeof(char));
         strcpy(response,initialResponse);
 
         char *end;
         end = NULL;
 
+	printf("Constructing response for client...\n");
         while(end == NULL) {
                 read(clientfd,initialResponse,MAXLINE);
                 end = strstr(initialResponse,"</html>");
                 strcat(response,initialResponse);
         }
+	printf("Constructed response for client\n");
+	*/
+//	write(connfd,Response,strlen(Response));
+//	Rio_writen(connfd,response,strlen(response));
+	//end = strstr(response,"</html>");
 
-	while(*end != '\0') {
-		printf("%c",*end);
-		end++;
-	}
-	Rio_writen(connfd,response,strlen(response));
-	end = strstr(response,"</html>");
-	
+	close(connfd);
+	close(clientfd);	
 
-	strcat(response,"\r\n\r\n\0");
+	//strcat(response,"\r\n\r\n\0");
 
-        printf("Statement is: %s\n\n",response);
-        free(response);
+ //       printf("Statement is: %s\n\n",response);
+//        free(response);
 
 
 
