@@ -31,18 +31,6 @@ int main(int argc, char **argv)
         struct sockaddr_in clientaddr;
 
 	int serverfd, clientPort;
-
-	/* Check arguments */
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
-		exit(0);
-	}
-
-
-	
-	port = atoi(argv[1]); // Tested using port 5000
-	printf("Proxy started on port %u. Waiting for client connection...\n",port);
-	
 	char *clientIP;
 	char URL[MAXLINE];
 	char hostString[MAXLINE];	
@@ -56,14 +44,20 @@ int main(int argc, char **argv)
         ssize_t bytesRead;
 	rio_t rio,rio2;
 
+	/* Check arguments */
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
+		exit(0);
+	}
+
+
+	
+	port = atoi(argv[1]); // Tested using port 5000
+	printf("Proxy started on port %u. Waiting for client connection...\n",port);
+
 	listenfd = Open_listenfd(port); // Creates a socket and binds it to the given port.
 
-
-	int i;
-	i = 0;
-
-
-	while(i != 100) {
+	while(1) {
 
 		FILE *logfile = fopen("requestLog.txt","a");
 
@@ -136,12 +130,7 @@ sscanf(buffer,"%s %s HTTP/1.1\r\n",requestType,URL); // got URL
 	
 		// Send request to server
 	        Rio_writen(serverfd,request,strlen(request));
-		bytesRead = Rio_readlineb(&rio2,response,MAXLINE);
-		Rio_writen(browserfd,response,bytesRead);
-		bytesRead = Rio_readlineb(&rio2,response,MAXLINE);
-		Rio_writen(browserfd,response,bytesRead);
 
-	
 		int logMessageLength;
 		logMessageLength = 40 + strlen(clientIP) + strlen(URL);
 		char logMessage[logMessageLength];
@@ -153,7 +142,7 @@ sscanf(buffer,"%s %s HTTP/1.1\r\n",requestType,URL); // got URL
 		while((bytesRead = Rio_readlineb(&rio2,response,MAXLINE)) > 0) {
 			if((contentPtr = strstr(response,"Content-Length: ")) != NULL) {
 				sscanf(response,"Content-Length: %s\r\n",contentLength);
-				format_log_entry(logMessage,&clientaddr,URL,atoi(contentLength)); // NEED TO MOVE THIS 
+				format_log_entry(logMessage,&clientaddr,URL,atoi(contentLength)); 
 				fprintf(logfile,"%s\n",logMessage); // print log entry
 
 			}
@@ -165,7 +154,6 @@ sscanf(buffer,"%s %s HTTP/1.1\r\n",requestType,URL); // got URL
 		fclose(logfile);
 
 		printf("Done with the sending\n");
-		i++;
 	}
 	close(browserfd);
 	close(serverfd);	
