@@ -22,69 +22,15 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, 
  */
 
 
-char *getURL(char *buffer) {
-
-	char *requestTokens[10];
-        char *token;
-        token = strtok(buffer," ");
-        int i;
-        i = 0;
-        while((i != 10) && (token != NULL)) {
-                requestTokens[i] = token;
-                //printf("requestTokens[%u] = %s\n",i,requestTokens[i]);
-                i++;
-                token = strtok(NULL," ");
-        }
-
-        // Find the URL
-        i = 0;
-        while(strcmp("GET",requestTokens[i]) != 0)
-                i++;
-
-        // NEED TO GET THE PORT, IF AVAILABLE
-
-
-        char *URL;
-        URL = requestTokens[i+1];
-        return URL;
-
-
-
-}
-
-
-	
-
-
-
-int findContentLength(char *buf) {
-        char *contentLength;
-        contentLength = strstr(buf,"Content-Length: ");
-        contentLength = contentLength + 16; // Move the pointer to the beginning of the number
-        char byteString[10] = "";
-
-        int counter;
-        counter = 0;
-        while(isdigit(*contentLength) != 0) {
-                byteString[counter] = *contentLength;
-                contentLength++;
-                counter++;
-        }
-
-        int contentSize;
-        contentSize = atoi(byteString);
-
-        return contentSize;
-}
-
 
 
 int main(int argc, char **argv)
 {
 
-	int listenfd, connfd, port, clientlen;
+	int listenfd, browserfd, port, clientlen;
         struct sockaddr_in clientaddr;
 
+	int serverfd, clientPort;
 
 	/* Check arguments */
 	if (argc != 2) {
@@ -92,155 +38,137 @@ int main(int argc, char **argv)
 		exit(0);
 	}
 
+
 	
-	port = atoi(argv[1]);
+	port = atoi(argv[1]); // Tested using port 5000
 	printf("Proxy started on port %u. Waiting for client connection...\n",port);
-        listenfd = Open_listenfd(port); // Creates a socket and binds it to the given port.
-
-        clientlen = sizeof(clientaddr);
-	FILE *logfile = fopen("clientLog.txt","w");
-
-	printf("Server is listening for client connection requests...\n");
-
-        // Listens for requests on the listenfd, fills in client socket address in addr, returns 
-        // connected descriptor for communication with client
-        connfd = Accept(listenfd,(SA *)&clientaddr, &clientlen);
-       	char buffer[501];
-	char request[501];
-        ssize_t bytesRead;
-
-	//printf("The buffer is: %s\n",buffer);	
-        // Let's read a request into the buffer
-        bytesRead = Rio_readn(connfd,buffer,500);
-	//printf("The buffer is: %s\n",buffer);	
-	strcpy(request,buffer);
-
-	// Get the client IP using the clientaddr struct
+	
 	char *clientIP;
-	clientIP = inet_ntoa(clientaddr.sin_addr);
-
-	printf("The client's IP is: %s\n",clientIP);
-
-	// GET HOST FROM THE BUFFER
-	/*
-		1) Get a pointer to the line that you need
-		2) Count the number of characters between The beginning and the \r
-		3) Move the pointer forward by 6 bytes
-		4) Subtract 6 from the character count and read the characters into an array
-	*/
-
-	char *hostPtr, *countPtr;
-	hostPtr = strstr(buffer,"Host: ");
-	int count;
-	count = 0;
-	countPtr = hostPtr;
-	while(*countPtr != '\r') {
-		countPtr++;
-		count++;
-	}
-		
-	hostPtr += 6;
-	char host[count-5];
-	int counter = 0;
-	while(*hostPtr != '\r') {
-		host[counter] = *hostPtr;
-		counter++;
-		hostPtr++;
-	}
-
-	host[count-6] = '\0';
-	char *URL;
-	URL = getURL(buffer);
-
+	char URL[MAXLINE];
+	char hostString[MAXLINE];	
+	char host[MAXLINE];
 	int logMessageLength;
-	logMessageLength = 30 + strlen(clientIP) + strlen(URL);
 	char logMessage[logMessageLength];
-	format_log_entry(logMessage,&clientaddr,URL,0);
-	//printf("The logMessage is: %s\n",logMessage);
+	char request[MAXLINE];
+	char requestType[10];
+	char response[MAXLINE];
+       	char buffer[MAXLINE];
+        ssize_t bytesRead;
+	rio_t rio,rio2;
 
-	fprintf(logfile,"%s\n",logMessage);
-	//printf("Using host (%s) and bytesRead (%u)\n",host,bytesRead);
-
-	//printf("Enter the word \"end\" to end the request cycle: ");
+	listenfd = Open_listenfd(port); // Creates a socket and binds it to the given port.
 
 
-	fclose(logfile);
+	int i;
+	i = 0;
 
-/////////////////////////////////////////////////////////////////////////////////////////////
 
-	int clientfd, clientPort;
-	rio_t rio;
+	while(i != 100) {
 
-	clientPort = 80;
-	printf("Going to try Open_clientfd\n");
-        clientfd = Open_clientfd(host,clientPort);
-        printf("Opened connection to host\n");
-        Rio_readinitb(&rio,clientfd);
-        printf("Ready to write to client file descriptor\n");
+		FILE *logfile = fopen("requestLog.txt","a");
 
-	// Create request to server
-	/*
-	char *endRequest;
-	endRequest = strstr(request,"User-Agent:");
-	*endRequest = '\r';
-	*(endRequest+1) = '\n';
-	*(endRequest+2) = '\0';
-	*/
-	char initialResponse[MAXLINE];	
-	printf("Proxy sent request to host\n");
-        Rio_writen(clientfd,request,strlen(request));
-
-	char Response[1000];
-	while((bytesRead = read(clientfd,Response,1000)) > 0) 
-		write(connfd,Response,bytesRead);
-
-	printf("Done with the sending\n");
-
+	        clientlen = sizeof(clientaddr);
 
 	
+		printf("Server is listening for client connection requests...\n");
 	
+	
+	        // Listens for requests on the listenfd, fills in client socket address in addr, returns 
+	        // connected descriptor for communication with client
+	        browserfd = Accept(listenfd,(SA *)&clientaddr, &clientlen);
+	
+		Rio_readinitb(&rio,browserfd);
+	        // Let's read a request from the browser into the buffer
+	        bytesRead = Rio_readlineb(&rio,buffer,MAXLINE);
+		
+	
+		// Get the client IP using the clientaddr struct
+		clientIP = inet_ntoa(clientaddr.sin_addr);
+	
+		char *colon;
+		int colonCount;
+		colonCount = 0;
+		colon = buffer;
+		while((colonCount != 2) && (*colon != '\0')){
+			if(*colon == ':')
+				colonCount++;
+	
+			colon++;
+		}
+		
+		if(isdigit(*(colon+1))) {
+			char specialPort[10];
+			int j;
+			j = 0;
+			while(*colon != '/') {
+				specialPort[j] = *colon;
+				j++;
+				colon++;
+			}
 
-	/*	
-        read(clientfd,initialResponse,MAXLINE); 
-	// Only read gets the actual content. Rio_readlineb does not 
-	printf("Proxy received response from host\n");
-                // Make into findContentLength()
+			clientPort = atoi(specialPort);
+		}
+		else {
+			sscanf(buffer,"%s %s HTTP/1.1\r\n",requestType,URL); // got URL
+sscanf(buffer,"%s %s HTTP/1.1\r\n",requestType,URL); // got URL
+			clientPort = 80;
+		}
 
-        int contentLength;
-        contentLength = findContentLength(initialResponse);
+	
+		bytesRead = Rio_readlineb(&rio,hostString,MAXLINE);
+		sscanf(hostString,"Host: %s\r\n",host); // got host
+	
+			
+
+			
+		printf("Going to try Open_clientfd\n");
+	        serverfd = Open_clientfd(host,clientPort);
+
+	        printf("Opened connection to host\n");
+	        Rio_readinitb(&rio2,serverfd);
+	        printf("Ready to write to client file descriptor\n");
+	
+		// Form HTTP/1.0 Request
+		sprintf(request,"%s %s HTTP/1.0\r\nHost: %s\r\n\r\n",requestType,URL,host);
+	
+	
+		printf("Proxy sent request to host\n");
+	
+		// Send request to server
+	        Rio_writen(serverfd,request,strlen(request));
+		bytesRead = Rio_readlineb(&rio2,response,MAXLINE);
+		Rio_writen(browserfd,response,bytesRead);
+		bytesRead = Rio_readlineb(&rio2,response,MAXLINE);
+		Rio_writen(browserfd,response,bytesRead);
+
+	
+		int logMessageLength;
+		logMessageLength = 40 + strlen(clientIP) + strlen(URL);
+		char logMessage[logMessageLength];
+		char contentLength[15];
+		char *contentPtr;
 
 
-        // Create the response in one large character array
-//      char response[strlen(buf) + contentLength];
-	printf("Making space for the response...\n");
-        char *response = (char *)malloc((strlen(initialResponse) + contentLength)*sizeof(char));
-	//char *response = (char *)malloc(10000000*sizeof(char));
-        strcpy(response,initialResponse);
+		// Retrieve response from the server and forward to browser
+		while((bytesRead = Rio_readlineb(&rio2,response,MAXLINE)) > 0) {
+			if((contentPtr = strstr(response,"Content-Length: ")) != NULL) {
+				sscanf(response,"Content-Length: %s\r\n",contentLength);
+				format_log_entry(logMessage,&clientaddr,URL,atoi(contentLength)); // NEED TO MOVE THIS 
+				fprintf(logfile,"%s\n",logMessage); // print log entry
 
-        char *end;
-        end = NULL;
-
-	printf("Constructing response for client...\n");
-        while(end == NULL) {
-                read(clientfd,initialResponse,MAXLINE);
-                end = strstr(initialResponse,"</html>");
-                strcat(response,initialResponse);
-        }
-	printf("Constructed response for client\n");
-	*/
-//	write(connfd,Response,strlen(Response));
-//	Rio_writen(connfd,response,strlen(response));
-	//end = strstr(response,"</html>");
-
-	close(connfd);
-	close(clientfd);	
-
-	//strcat(response,"\r\n\r\n\0");
-
- //       printf("Statement is: %s\n\n",response);
-//        free(response);
+			}
 
 
+			Rio_writen(browserfd,response,bytesRead);
+		}
+		
+		fclose(logfile);
+
+		printf("Done with the sending\n");
+		i++;
+	}
+	close(browserfd);
+	close(serverfd);	
 
 	exit(0);
 }
@@ -278,7 +206,7 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
 
 
     /* Return the formatted log entry string */
-    sprintf(logstring, "%s: %d.%d.%d.%d %s", time_str, a, b, c, d, uri);
+    sprintf(logstring, "%s: %d.%d.%d.%d %s %d", time_str, a, b, c, d, uri, size);
 }
 
 
