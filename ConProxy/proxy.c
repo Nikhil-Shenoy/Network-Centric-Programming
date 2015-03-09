@@ -27,6 +27,7 @@ struct threadPackage {
 	struct sockaddr_in clientAddress;
 	int clientLen;
 	char browserRequest[MAXLINE];
+	char browserHost[MAXLINE];
 	rio_t Rio;
 	rio_t Rio2;
 	int browserFd;
@@ -60,17 +61,15 @@ void *worker(void *tp) {
 
 	TP = (struct threadPackage *)tp;
 
-	int a;
-	a = (int)TP->browserFd;
-/*
-	browserfd = TP.browserFd;
+	
+	browserfd = TP->browserFd;
 	Rio_readinitb(&rio,browserfd);
-//	strcpy(browserReq,TP->browserRequest);
-*/	
+	strcpy(browserReq,TP->browserRequest);
+	strcpy(hostString,TP->browserHost);	
 	
 		// Get the client IP using the clientaddr struct
 		printf("Getting client IP\n");
-//		clientIP = inet_ntoa((TP->clientAddress).sin_addr);
+		clientIP = inet_ntoa((TP->clientAddress).sin_addr);
 	
 		char *colon;
 		int colonCount;
@@ -102,7 +101,6 @@ sscanf(browserReq,"%s %s HTTP/1.1\r\n",requestType,URL); // got URL
 		}
 
 	
-		bytesRead = Rio_readlineb(&rio,hostString,MAXLINE);
 		sscanf(hostString,"Host: %s\r\n",host); // got host
 		printf("Got the host\n");	
 			
@@ -143,7 +141,7 @@ sscanf(browserReq,"%s %s HTTP/1.1\r\n",requestType,URL); // got URL
 			Rio_writen(browserfd,response,bytesRead);
 		}
 		
-		fclose(logfile);
+		//fclose(logfile);
 
 	pthread_exit(NULL);
 
@@ -159,6 +157,7 @@ int main(int argc, char **argv)
 	int browserfd, serverfd, clientlen, bytesRead;
         struct sockaddr_in clientaddr;
 	char buffer[MAXLINE];
+	char browserHost[MAXLINE];
 
 	/* Check arguments */
 	if (argc != 2) {
@@ -191,6 +190,7 @@ int main(int argc, char **argv)
 
 	        // Let's read a request from the browser into the buffer
 	        bytesRead = Rio_readlineb(&rio,buffer,MAXLINE);
+		bytesRead = Rio_readlineb(&rio,browserHost,MAXLINE);
 
 		// package for the thread
 		struct threadPackage tp;
@@ -201,15 +201,15 @@ int main(int argc, char **argv)
 		tp.Rio = rio;
 		tp.Rio2 = rio2;
 		tp.browserFd = browserfd;
+		strcpy(tp.browserHost,browserHost);
 
 		pthread_t tid;
 		int threadReturn;
 		threadReturn = pthread_create(&tid,NULL,worker,(void *)&tp);
-
+		pthread_join(tid,NULL);
 
 		printf("Done with the sending\n");
 
-		sleep(5);
 	//}
 	close(browserfd);
 	close(serverfd);	
