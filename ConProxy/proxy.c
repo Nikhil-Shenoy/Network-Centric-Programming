@@ -172,7 +172,7 @@ int main(int argc, char **argv)
 
 	listenfd = Open_listenfd(port); // Creates a socket and binds it to the given port.
 
-	//while(1) {
+	while(1) {
 
 		FILE *logfile = fopen("requestLog.txt","a");
 
@@ -210,7 +210,8 @@ int main(int argc, char **argv)
 
 		printf("Done with the sending\n");
 
-	//}
+	}
+	printf("Exited the while loop\n");
 	close(browserfd);
 	close(serverfd);	
 
