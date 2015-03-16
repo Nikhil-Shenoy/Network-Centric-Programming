@@ -1,0 +1,3 @@
+- Make sure all thread-unsafe functions in the thread portion are locked down
+- Organize code better
+- Do process portion, with file locking
