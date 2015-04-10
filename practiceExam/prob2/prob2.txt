@@ -1,0 +1,25 @@
+Written questions:
+
+	2a) No thread synchronization is necessary when two threads only modify local variables
+
+	2b)
+		line 10: pthread_mutex_lock(&lock);
+		line 18: pthread_mutex_unlock(&lock);
+
+		line 19: pthread_mutex_lock(&lock);
+		line 24: pthread_mutex_unlock(&lock);
+		
+		line 25-27:
+			pthread_mutex_lock(&lock);
+			*lineptr++=buf[i++];
+			pthread_mutex_unlock(&lock);
+
+		no locking necessary in lines 28-32 because the are operations on locla variables
+
+
+
+
+	2c) Use a static lock variable as if it were a global variable and implement a spin-lock
+
+
+
