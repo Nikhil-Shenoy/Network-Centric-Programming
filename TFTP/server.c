@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <inttypes.h>
 #include <string.h>
+#include <netdb.h>
 #include "packet.h"
 
 #define PORT 5000
@@ -15,11 +16,25 @@
 void printRequest(Request *request,struct sockaddr_in *cliPtr) {
 
 	char summary[MAXLINE];
+/*
+	char **pp;
+
+	struct in_addr address;
+	struct hostent *hp;
+
+	hp = gethostbyaddr(cliPtr,sizeof(*cliPtr),AF_INET);
+	pp = hp->h_addr_list;
+	address.s_addr = ((struct in_addr *)*pp)->s_addr;
+*/
+	
 
 	if(request->opcode == 1) 
-		sprintf(summary,"%s %s %s from %s:%u\n","RRQ",request->filename, request->mode,inet_ntoa(cliPtr->sin_addr),cliPtr->sin_port);
+		sprintf(summary,"%s %s %s from %u:%u\n","RRQ",request->filename, request->mode,inet_ntoa(cliPtr->sin_addr),cliPtr->sin_port);
 	else if(request->opcode == 2)
-		sprintf(summary,"%s %s %s from %s:%u\n","WRQ",request->filename, request->mode,inet_ntoa(cliPtr->sin_addr),cliPtr->sin_port);
+		sprintf(summary,"%s %s %s from %u:%u\n","WRQ",request->filename, request->mode,inet_ntoa(cliPtr->sin_addr),cliPtr->sin_port);
+
+
+	printf("%s",summary);
 
 }
 
@@ -103,12 +118,10 @@ int main(int argc, char **argv) {
 	int i, received;
 	printf("Starting to receive packets\n");	
 	for(;;) {
-		printf("Before recvfrom\n");
 		char mesg[MAXLINE];
 		memset(mesg,'\0',MAXLINE);
 		socklen_t clilen; clilen =sizeof(client);
 		received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)&client,&clilen);
-		printf("After recvfrom\n");
 
 		Request newRequest;
 		Request *reqRef;
@@ -118,6 +131,23 @@ int main(int argc, char **argv) {
 		parseRequest(reqRef);	
 
 		printRequest(reqRef,cliPtr);	
+	
+			
+		uint16_t opcode, errorCode;
+		opcode = htons(5);
+		errorCode = htons(2);
+		char *fileNotFound;
+		fileNotFound = "File not found";
+
+		int packetLen; packetLen = 2 + 2 + strlen(fileNotFound) + 1;	
+		char errorPacket[packetLen];
+		memset(errorPacket,'\0',packetLen);
+	
+		memcpy(errorPacket,&opcode,2);
+		memcpy(errorPacket,&errorCode,2);
+		memcpy(errorPacket,fileNotFound,strlen(fileNotFound));
+			
+		sendto(sockfd,errorPacket,packetLen,0,(struct sockaddr *)&client,clilen);
 	}
 
 
