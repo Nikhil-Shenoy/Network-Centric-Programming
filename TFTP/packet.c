@@ -5,6 +5,7 @@
 #include "packet.h"
 
 void constructRequest(Request *newRequest,uint16_t Opcode, char *Filename, char *Mode) {
+
 	
 	// set everything to null
 	memset(newRequest,'\0',sizeof(*newRequest));
