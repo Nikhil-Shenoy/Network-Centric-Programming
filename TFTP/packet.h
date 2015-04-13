@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+
 #define MAXLINE 2048
 struct request {
 	char buffer[MAXLINE];
