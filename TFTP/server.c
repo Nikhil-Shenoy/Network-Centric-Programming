@@ -44,9 +44,9 @@ int main(int argc, char **argv) {
 	int i, received;
 	printf("Starting to receive packets\n");	
 	for(;;) {
-		char mesg[MAXLINE];
+		unsigned char mesg[MAXLINE];
 		memset(mesg,'\0',MAXLINE);
-		socklen_t clilen; clilen =sizeof(client);
+		socklen_t clilen; memset(&clilen,'\0',sizeof(socklen_t)); clilen = sizeof(client);
 		received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)&client,&clilen);
 		if(received == -1) {
 			perror("recvfrom");
@@ -58,13 +58,45 @@ int main(int argc, char **argv) {
 			memcpy(newRequest.buffer,mesg,MAXLINE);
 			reqRef = &newRequest;
 			
-			error = parseRequest(reqRef);	
-			if(error == 1)
-				continue;
+			error = organizeRequest(reqRef);	
+			if(error == 1) {
+				fprintf(stderr,"Error in organizing request\n");
+				exit(1);
+			}
 
 			printRequest(reqRef,cliPtr);	
+
+						
+			// Verify if it is RRQ
+
+			switch(reqRef->opcode) {
+				case 1:  // RRQ
+					printf("Do RRQ stuff\n");
+					if(checkForFile(reqRef->filename))
+						error = sendDataPacket(sockfd,client,clilen,reqRef->filename);
+					else
+						error = sendErrorPacket(sockfd,client,clilen);
+					break;
+				case 2:
+					printf("Do WRQ stuff. Most likely nothing\n");
+					break;
+				case 3:
+					printf("DATA packet. Most likely won't get this from client, but should handle it anyway\n");
+					break;
+				case 4:
+					printf("ACK packet. Send the next packet\n");
+					break;
+				case 5:
+					printf("Error packet. Retransmit previous packet\n");
+					break;
+				default:
+					fprintf(stderr,"Opcode not part of RFC protocol\n");
+					exit(1);
+			}
+				
+			memset(reqRef,'\0',sizeof(*reqRef));
 	
-			error = sendErrorPacket(sockfd,client,clilen);	
+			//error = sendErrorPacket(sockfd,client,clilen);	
 			if(error == 1) 
 				continue;
 		}

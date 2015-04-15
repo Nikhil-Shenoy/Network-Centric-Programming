@@ -1,0 +1,20 @@
+					Requirements for TFTP 2
+
+
+Part 1:
+	- Implement the download (response to RRQ) for binary mode using an iterative server
+	- One request served at a time
+	- Server should check whether file exists in the working directory
+		- If not, return previously constructed error packet
+		- If yes, download the file
+	- Provide command line option to set the port number
+	- Make sure that the file downloads to a directory that is separate from the one you are working in.
+
+Part 2:
+	- Implement a concurrent server to serve multiple connections using I/O Multiplexing
+
+
+
+Tips:
+	- Put sleep(1) in between each transmission of a packet.
+	- Use netstat and tcpdump to check the packets

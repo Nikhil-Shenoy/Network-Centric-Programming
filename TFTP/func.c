@@ -8,15 +8,19 @@
 #include <string.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <dirent.h>
 #include "packet.h"
 
 #define PORT 5000
 #define MAXLINE 2048
 #define PACKETS 10
+#define DATA_PACK_LEN 516
+#define DATA_LEN 512
 
 void printRequest(Request *request,struct sockaddr_in *cliPtr) {
 
         char summary[MAXLINE];
+	memset(summary,'\0',MAXLINE);
 
         struct sockaddr_in clientInfo;
         clientInfo = *cliPtr;
@@ -33,7 +37,7 @@ void printRequest(Request *request,struct sockaddr_in *cliPtr) {
 
 // Return 1 on error
 // Return 0 on success
-int parseRequest(Request *newRequest) {
+int organizeRequest(Request *newRequest) {
 
         /*
 	* 1) Get first two bytes, convert them from network to host byte order, and store
@@ -53,19 +57,23 @@ int parseRequest(Request *newRequest) {
         // Step 1
         memcpy(&(newRequest->opcode),reqContent,2);
         newRequest->opcode = ntohs(newRequest->opcode);
+
+
 	uint16_t tempOpcode;
 	tempOpcode = newRequest->opcode;
+
 	
 	if(tempOpcode == 3) {
 		fprintf(stderr,"Packet is %s. This request will be handled in the second part of the assignment\n","DATA");
 		return 1;
 	} else if(tempOpcode == 4) {
-		fprintf(stderr,"Packet is %s. This request will be handled in the second part of the assignment\n","ACK");
-		return 1;
+		//printf("Packet is %s. This request will be handled in the second part of the assignment\n","ACK");
+		return 0;
 	} else if(tempOpcode == 5) {
 		fprintf(stderr,"Packet is %s. This request will be handled in the second part of the assignment\n","ERROR");
 		return 1;
 	}
+
 
 
 
@@ -107,22 +115,27 @@ int sendErrorPacket(int sockfd,struct sockaddr_in client, socklen_t clilen) {
 	char *fileNotFound;
 	fileNotFound = "File not found";
 
+	// Allocate space for packet and initialize it
 	int packetLen; packetLen = 2 + 2 + strlen(fileNotFound) + 1;	
 	char errorPacket[packetLen];
 	memset(errorPacket,'\0',packetLen);
 
 	char *memPtr; memPtr = errorPacket;
-	
+
+	// Copy in the opcode
 	memcpy(memPtr,&opcode,2);
 	memPtr += 2;
 
+	// Copy in the error code
 	memcpy(memPtr,&errorCode,2);
 	memPtr += 2;
 
+	// Copy in the File Not Found error
 	memcpy(memPtr,fileNotFound,strlen(fileNotFound));
 	memPtr += strlen(fileNotFound);
 	*memPtr = '\0';	
-	
+
+	// Send the packet	
 	int error;		
 	error = sendto(sockfd,errorPacket,packetLen,0,(struct sockaddr *)&client,clilen);
 
@@ -133,10 +146,121 @@ int sendErrorPacket(int sockfd,struct sockaddr_in client, socklen_t clilen) {
 		return 0;
 }
 
+/*
+This function checks to see whether a file exists in the current directory.
+Returns 1 if the file is present, and 0 if the file is not present
+*/
+int checkForFile(char *filename) {
+
+	// Open current directory
+	DIR *dp = opendir(".");
+
+	// Check each entry for the file
+	struct dirent *entry;
+	while((entry = readdir(dp)) != NULL) {
+		if(strcmp(entry->d_name,filename) == 0) {
+			closedir(dp);
+			return 1;
+		}
+	}
+
+	closedir(dp);	
+	return 0;
+
+}
 
 
 
+/*
+This function constructs a data packet and sends it to the client
+*/
 
+int sendDataPacket(int sockfd, struct sockaddr_in client, socklen_t clilen, char *filename,int resend) {
+
+	// Create block number
+	static uint16_t blockNum; blockNum = 1;
+	uint16_t convertedBlockNum; convertedBlockNum = htons(blockNum);
+
+	// Assemble opcode
+	uint16_t opcode;
+	opcode = htons(3);
+
+	// Create space for data and previous data
+	unsigned char data[DATA_LEN];
+	static unsigned char oldData[DATA_LEN];
+	memset(data,'\0',DATA_LEN);
+	
+	// Create space for offset and bytesRead
+	static int offset; offset = 0;
+	int bytesRead; bytesRead = 0;
+
+	// Handle resend condition
+	if(resend == 1) {
+		strcpy(data,oldData,strlen(oldData);
+		blockNum -= 1;
+		bytesRead = strlen(oldData);
+	} else {	
+		// Gather data from file
+		FILE *fp = fopen(filename,"r");
+		if(fp == NULL) {
+			perror("Error opening file");
+			return 1;
+		}
+		fseek(fp,offset,SEEK_SET);
+
+		char c; int i; i = 0;
+		c = fgetc(fp);
+		while(c != EOF)  {
+			data[i] = c;
+			i++;		
+			c = fgetc(fp);
+			if((i == 512) || (c == EOF))
+				break;	
+		}
+		fclose(fp);
+		strcpy(oldData,data,strlen(data);
+		bytesRead = strlen(data);
+	}
+
+
+	// Create packet
+	int packetsize; packetsize = 4 + bytesRead;
+	char packet[packetsize];
+	memset(packet,'\0',packetsize);
+	char *iterator; iterator = packet;
+	
+	// Copy in the opcode
+	memcpy(iterator,&opcode,2);
+	iterator += 2;
+	
+	// Copy in the block number
+	memcpy(iterator,&convertedBlockNum,2);
+	iterator += 2;
+
+	// Copy in the data
+	memcpy(iterator,data,strlen(data));
+	iterator += strlen(data);
+	*iterator = '\0';
+
+	// Send the packet
+	int error;		
+	error = sendto(sockfd,packet,packetsize,0,(struct sockaddr *)&client,clilen);
+	
+	if(resend == 1) 
+		blockNum += 1;
+	else {
+		offset += bytesRead;
+		blockNum += 1;
+	}
+
+
+	if(error == 1) {
+		fprintf(stderr,"Error sending DATA packet\n");
+		return 1;
+	} else
+		return 0;
+
+}
 
 
 
