@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-I. -g
-DEPS = packet.h
+DEPS = packet.h func.h
 OBJ = packet.o server.o func.o
 
 %.o: %.c $(DEPS)

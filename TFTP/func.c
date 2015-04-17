@@ -9,6 +9,8 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <dirent.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "packet.h"
 
 #define PORT 5000
@@ -16,6 +18,10 @@
 #define PACKETS 10
 #define DATA_PACK_LEN 516
 #define DATA_LEN 512
+
+State packState;
+uint16_t blockNum;
+
 
 void printRequest(Request *request,struct sockaddr_in *cliPtr) {
 
@@ -175,52 +181,46 @@ int checkForFile(char *filename) {
 This function constructs a data packet and sends it to the client
 */
 
-int sendDataPacket(int sockfd, struct sockaddr_in client, socklen_t clilen, char *filename,int resend) {
+/*
+int sendDataPacket(int sockfd, struct sockaddr_in client, socklen_t clilen, char *filename, char *mode) {
 
-	// Create block number
-	static uint16_t blockNum; blockNum = 1;
-	uint16_t convertedBlockNum; convertedBlockNum = htons(blockNum);
-
-	// Assemble opcode
-	uint16_t opcode;
-	opcode = htons(3);
-
+	// Update state struct
+	strcpy(packState.Filename,filename);
+	strcpy(packState.Mode,mode);
+	packState.BlockNum = htons(1);
+	packState.Offset = 0;
+	packState.Opcode = htons(3);
+	
 	// Create space for data and previous data
 	unsigned char data[DATA_LEN];
-	static unsigned char oldData[DATA_LEN];
 	memset(data,'\0',DATA_LEN);
 	
 	// Create space for offset and bytesRead
-	static int offset; offset = 0;
+	//int offset; offset = 0;
 	int bytesRead; bytesRead = 0;
 
-	// Handle resend condition
-	if(resend == 1) {
-		strcpy(data,oldData,strlen(oldData);
-		blockNum -= 1;
-		bytesRead = strlen(oldData);
-	} else {	
-		// Gather data from file
-		FILE *fp = fopen(filename,"r");
-		if(fp == NULL) {
-			perror("Error opening file");
-			return 1;
-		}
-		fseek(fp,offset,SEEK_SET);
-
-		char c; int i; i = 0;
-		c = fgetc(fp);
-		while(c != EOF)  {
-			data[i] = c;
-			i++;		
-			c = fgetc(fp);
-			if((i == 512) || (c == EOF))
-				break;	
-		}
-		fclose(fp);
-		strcpy(oldData,data,strlen(data);
-		bytesRead = strlen(data);
+	// Gather data from file
+	FILE *fp = fopen(filename,"r");
+	if(fp == NULL) {
+		perror("Error opening file");
+		return 1;
 	}
+
+	char c; int i; i = 0;
+	c = fgetc(fp);
+	while(c != EOF)  {
+		data[i] = c;
+		i++;		
+		c = fgetc(fp);
+		if((i == 512) || (c == EOF))
+			break;	
+	}
+	fclose(fp);
+	bytesRead = i;
+
+	strcpy(packState.Data,data);
+	packState.Data[strlen(data) + 1] = '\0';
+	packState.BytesRead = bytesRead;
 
 
 	// Create packet
@@ -230,11 +230,11 @@ int sendDataPacket(int sockfd, struct sockaddr_in client, socklen_t clilen, char
 	char *iterator; iterator = packet;
 	
 	// Copy in the opcode
-	memcpy(iterator,&opcode,2);
+	memcpy(iterator,&packState.Opcode,2);
 	iterator += 2;
 	
 	// Copy in the block number
-	memcpy(iterator,&convertedBlockNum,2);
+	memcpy(iterator,&packState.BlockNum,2);
 	iterator += 2;
 
 	// Copy in the data
@@ -245,13 +245,6 @@ int sendDataPacket(int sockfd, struct sockaddr_in client, socklen_t clilen, char
 	// Send the packet
 	int error;		
 	error = sendto(sockfd,packet,packetsize,0,(struct sockaddr *)&client,clilen);
-	
-	if(resend == 1) 
-		blockNum += 1;
-	else {
-		offset += bytesRead;
-		blockNum += 1;
-	}
 
 
 	if(error == 1) {
@@ -261,6 +254,133 @@ int sendDataPacket(int sockfd, struct sockaddr_in client, socklen_t clilen, char
 		return 0;
 
 }
+*/
+
+
+int sendDataPacket(int sockfd, int blockNum, char *data, struct sockaddr_in *cliPtr, socklen_t clilen) {
+
+	int packetSize;
+	packetSize = 4 + strlen(data);
+	char packet[packetSize];
+	memset(packet,'\0',packetSize);
+	char *iter; iter = packet;
+
+	// Copy opcode in
+	uint16_t opcode = htons(3);
+	memcpy(iter,&opcode,2);
+	iter += 2;
+
+	// Copy block number in
+	uint16_t netBlockNum; 
+	memset(&netBlockNum,'\0',2);
+	netBlockNum = htons(blockNum);
+	memcpy(iter,&netBlockNum,2);
+	iter += 2;
+
+	// Copy data in 
+	memcpy(iter,data,strlen(data));
+
+	// send the message
+	int error;
+	error = sendto(sockfd,packet,packetSize,0,(struct sockaddr *)cliPtr,clilen);
+
+
+}
+
+int newRead(int sockfd, struct sockaddr_in *cliPtr) {
+
+	// Initialize data and message structures	
+	unsigned char data[DATA_LEN];
+	unsigned char mesg[MAXLINE];
+	memset(data,'\0',DATA_LEN);
+	memset(mesg,'\0',MAXLINE);
+
+	// Initialize client structure
+	socklen_t clilen; memset(&clilen,'\0',sizeof(socklen_t));
+	clilen = sizeof(*cliPtr);
+
+	// Initialize references to a Request
+	int error;
+	Request newRequest;
+	Request *reqRef;
+	reqRef = &newRequest;
+
+	int fd;
+	int blockNum; blockNum = 1;
+	int k; k = 512;
+
+	// Loop for each download
+
+	for(;;) {
+		// Receive the first message
+		int received;
+		received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
+		memcpy(newRequest.buffer,mesg,MAXLINE);
+		error = organizeRequest(reqRef);
+	
+		if(reqRef->opcode != 1) {
+			fprintf(stderr,"Initial request is not RRQ\n");
+		} else {
+
+			fd = open(reqRef->filename,O_RDONLY);
+	
+			// Loop for each request within file
+			while(k == 512) {
+			
+				// Print the request	
+				printRequest(reqRef,cliPtr);
+		
+				switch(reqRef->opcode) {
+					case 1: // RRQ
+						//printf("Do RRQ stuff\n");
+						if(checkForFile(reqRef->filename)) {
+							k = read(fd,data,512);
+							// Construct packet and send
+							sendDataPacket(sockfd,blockNum,data,cliPtr,clilen);
+							break;
+						} else {
+							fprintf(stderr,"Error: File not found. Send error packet\n");
+							break;
+						}
+					case 2:
+						printf("Do WRQ stuff. Most likely nothing\n");
+						break;
+					case 3:
+						printf("DATA packet. Will not get DATA packet from client\n");
+						break;
+					case 4:
+						printf("ACK packet. Send the next packet\n");
+						k = read(fd,data,512);
+						// Construct packet and send
+		
+					case 5: 
+						printf("Error packet. Retransmit previous packet\n");
+						// Construct packet and send
+					default:
+						fprintf(stderr,"Error: packet not recognized\n");
+						exit(1);
+				}
+		
+				printf("BlockNum: %u. Read %u bytes\n",blockNum,k);
+				blockNum++;
+			
+				received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
+				memcpy(newRequest.buffer,mesg,MAXLINE);
+				error = organizeRequest(reqRef);
+
+
+			}
+			close(fd);
+		}
+	}
+}
+
+
+
+
+
+
+
 
 
 

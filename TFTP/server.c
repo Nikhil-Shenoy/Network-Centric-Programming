@@ -8,6 +8,7 @@
 #include <string.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <stdint.h>
 #include "packet.h"
 
 #define PORT 5000
@@ -20,6 +21,7 @@ int main(int argc, char **argv) {
 	int sockfd;
 	struct sockaddr_in server, client;
 	struct sockaddr_in *cliPtr; cliPtr = &client;
+
 	
 	// create the socket
 	sockfd = socket(AF_INET,SOCK_DGRAM,0);
@@ -43,6 +45,9 @@ int main(int argc, char **argv) {
 
 	int i, received;
 	printf("Starting to receive packets\n");	
+
+	i = newRead(sockfd,&client);
+/*
 	for(;;) {
 		unsigned char mesg[MAXLINE];
 		memset(mesg,'\0',MAXLINE);
@@ -72,8 +77,10 @@ int main(int argc, char **argv) {
 			switch(reqRef->opcode) {
 				case 1:  // RRQ
 					printf("Do RRQ stuff\n");
-					if(checkForFile(reqRef->filename))
-						error = sendDataPacket(sockfd,client,clilen,reqRef->filename);
+					if(checkForFile(reqRef->filename)) {
+						//error = sendDataPacket(sockfd,client,clilen,reqRef->filename,reqRef->mode);
+						error = newRead(sockfd,client,clilen,reqRef->filename,reqRef->mode);
+					}
 					else
 						error = sendErrorPacket(sockfd,client,clilen);
 					break;
@@ -101,7 +108,7 @@ int main(int argc, char **argv) {
 				continue;
 		}
 	}
-
+*/
 
 
 
