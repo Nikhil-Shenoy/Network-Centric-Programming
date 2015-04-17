@@ -1,6 +1,10 @@
 					Requirements for TFTP 2
 
 
+Socket() and Bind() use one port
+The response uses ANOTHER port. Call socket() again to send the reply using a different file descriptor. Close that socket once the message is sent. Then listen using recvfrom on the original packet.
+
+
 Part 1:
 	- Implement the download (response to RRQ) for binary mode using an iterative server
 	- One request served at a time
@@ -12,6 +16,13 @@ Part 1:
 
 Part 2:
 	- Implement a concurrent server to serve multiple connections using I/O Multiplexing
+
+
+To Do:
+	- The response uses ANOTHER port. Call socket() again to send the reply using a different file descriptor. Close that socket once the message is sent. Then listen using recvfrom on the original packet.
+	-  Provide command line option to set the port number
+	- Implement a concurrent server to serve multiple connections using I/O Multiplexing
+
 
 
 

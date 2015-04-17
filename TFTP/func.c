@@ -182,7 +182,7 @@ This function constructs a data packet and sends it to the client
 */
 
 
-int sendDataPacket(int sockfd, int blockNum, char *data, struct sockaddr_in *cliPtr, socklen_t clilen) {
+int sendDataPacket(int blockNum, char *data, struct sockaddr_in *cliPtr, socklen_t clilen) {
 
 	int packetSize;
 	packetSize = 4 + strlen(data);
@@ -206,8 +206,14 @@ int sendDataPacket(int sockfd, int blockNum, char *data, struct sockaddr_in *cli
 	memcpy(iter,data,strlen(data));
 
 	// send the message
+
+	// declare a new socket
+
+	int replyfd;
+	replyfd = socket(AF_INET,SOCK_DGRAM,0);
 	int error;
-	error = sendto(sockfd,packet,packetSize,0,(struct sockaddr *)cliPtr,clilen);
+	error = sendto(replyfd,packet,packetSize,0,(struct sockaddr *)cliPtr,clilen);
+
 
 
 }
@@ -274,7 +280,7 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr) {
 					strncpy(oldData,data,k);
 					oldData[k] = '\0';
 					// Construct packet and send
-					sendDataPacket(sockfd,blockNum,data,cliPtr,clilen);
+					sendDataPacket(blockNum,data,cliPtr,clilen);
 					memset(data,'\0',DATA_LEN);
 					break;
 				case 2:
@@ -289,7 +295,7 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr) {
 					strncpy(oldData,data,k);
 					oldData[k] = '\0';
 					// Construct packet and send
-					sendDataPacket(sockfd,blockNum,data,cliPtr,clilen);
+					sendDataPacket(blockNum,data,cliPtr,clilen);
 					memset(data,'\0',DATA_LEN);
 					break;
 
@@ -297,7 +303,7 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr) {
 					printf("Error packet. Retransmit previous packet\n");
 					// Construct packet and send
 					blockNum -= 1;
-					sendDataPacket(sockfd,blockNum,oldData,cliPtr,clilen);
+					sendDataPacket(blockNum,oldData,cliPtr,clilen);
 					break;
 				default:
 					fprintf(stderr,"Error: packet not recognized\n");
