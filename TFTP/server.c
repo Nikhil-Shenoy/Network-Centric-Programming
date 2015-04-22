@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 	int i, received;
 	printf("Starting to receive packets\n");	
 
-	i = newRead(sockfd,&client);
+	i = newRead(sockfd,&client,&server);
 /*
 	for(;;) {
 		unsigned char mesg[MAXLINE];

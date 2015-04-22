@@ -182,7 +182,7 @@ This function constructs a data packet and sends it to the client
 */
 
 
-int sendDataPacket(int blockNum, char *data, struct sockaddr_in *cliPtr, socklen_t clilen) {
+int sendDataPacket(int sockfd, int replyfd, int blockNum, char *data, struct sockaddr_in *cliPtr, socklen_t clilen, struct sockaddr_in *servPtr) {
 
 	int packetSize;
 	packetSize = 4 + strlen(data);
@@ -209,16 +209,19 @@ int sendDataPacket(int blockNum, char *data, struct sockaddr_in *cliPtr, socklen
 
 	// declare a new socket
 
-	int replyfd;
-	replyfd = socket(AF_INET,SOCK_DGRAM,0);
+//	int replyfd;
+//	replyfd = socket(AF_INET,SOCK_DGRAM,0);
+
+	//bind(replyfd,(struct sockaddr *)servPtr, sizeof(*servPtr));
 	int error;
 	error = sendto(replyfd,packet,packetSize,0,(struct sockaddr *)cliPtr,clilen);
+	//error = sendto(sockfd,packet,packetSize,0,(struct sockaddr *)cliPtr,clilen);
 
 
 
 }
 
-int newRead(int sockfd, struct sockaddr_in *cliPtr) {
+int newRead(int sockfd, struct sockaddr_in *cliPtr, struct sockaddr_in *servPtr) {
 
 	// Initialize data and message structures	
 	unsigned char data[DATA_LEN];
@@ -229,9 +232,7 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr) {
 	memset(oldData,'\0',DATA_LEN);
 
 	// Initialize client structure
-	socklen_t clilen; memset(&clilen,'\0',sizeof(socklen_t));
-	clilen = sizeof(*cliPtr);
-
+	socklen_t clilen; 
 	// Initialize references to a Request
 	int error;
 	Request newRequest;
@@ -248,6 +249,9 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr) {
 	for(;;) {
 		// Receive the first message
 		printf("Waiting to initiate transfer...\n");
+		memset(&clilen,'\0',sizeof(socklen_t));
+		clilen = sizeof(*cliPtr);
+
 		int received;
 		received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
 		memcpy(newRequest.buffer,mesg,MAXLINE);
@@ -268,11 +272,12 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr) {
 
 		// Loop for each request within file
 		k = 512;
+		int replyfd;
 		while(k == 512) {
 		
 			// Print the request	
 			printRequest(reqRef,cliPtr);
-	
+			replyfd = socket(AF_INET,SOCK_DGRAM,0);	
 			switch(reqRef->opcode) {
 				case 1: // RRQ
 					//printf("Do RRQ stuff\n");
@@ -280,7 +285,7 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr) {
 					strncpy(oldData,data,k);
 					oldData[k] = '\0';
 					// Construct packet and send
-					sendDataPacket(blockNum,data,cliPtr,clilen);
+					sendDataPacket(sockfd,replyfd,blockNum,data,cliPtr,clilen,servPtr);
 					memset(data,'\0',DATA_LEN);
 					break;
 				case 2:
@@ -295,7 +300,7 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr) {
 					strncpy(oldData,data,k);
 					oldData[k] = '\0';
 					// Construct packet and send
-					sendDataPacket(blockNum,data,cliPtr,clilen);
+					sendDataPacket(sockfd,replyfd,blockNum,data,cliPtr,clilen,servPtr);
 					memset(data,'\0',DATA_LEN);
 					break;
 
@@ -303,20 +308,24 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr) {
 					printf("Error packet. Retransmit previous packet\n");
 					// Construct packet and send
 					blockNum -= 1;
-					sendDataPacket(blockNum,oldData,cliPtr,clilen);
+					sendDataPacket(sockfd,replyfd,blockNum,oldData,cliPtr,clilen,servPtr);
 					break;
 				default:
 					fprintf(stderr,"Error: packet not recognized\n");
 					exit(1);
 			}
-	
+			memset(mesg,'\0',MAXLINE);	
+//			received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
+
 			printf("BlockNum: %u. Read %u bytes\n",blockNum,k);
 			blockNum += 1;
 	
 			
 			printf("Waiting for next request...\n");	
 			memset(mesg,'\0',MAXLINE);
-			received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
+			//received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
+			received = recvfrom(replyfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
+
 			memcpy(newRequest.buffer,mesg,MAXLINE);
 			error = organizeRequest(reqRef);
 
