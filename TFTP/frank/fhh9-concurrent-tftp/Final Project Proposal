@@ -1,0 +1,31 @@
+Frank Hoffman frankhhoffmanrutgers@gmail.com
+Nikhil Shenoy nrs76@scarletmail.rutgers.edu
+Daniel Bordak daniel.bordak@rutgers.edu
+
+what you will design and/or implement and how you will approach it)
+
+DESIGN GOAL:
+
+Our project idea is too create a multiuser game on a portable ad hoc network. The game in 
+question is mafia. It is a turn based game with a focus on discussion and byzantine schemes.
+Every player logins into the system and is given a role. The roles include but are not limited to
+mafia, policeman, doctor, and townsperson. each role has their own special ability and their own goals.
+The game is completed when all of the "bad" people are eliminated or all the "good" people are eliminated.
+
+APPROACH OF IMPLEMENTATION:
+The networking portion should be implemented using a TCP connection, and each user shall connect from a specialized
+client. The server will start a game and choose from a pool of particpants to randomly assign roles. The game
+will proceed as a series of round until a win condition is satisfied. One order of round progression is:
+Narrator
+Doctor
+Mafia
+Policeman
+Townsperson
+At each round the various roles have a chance to use their special abilities. The narrator can go on a rant,
+the mafia can mark someone for death, the policeman can search for the mafia, and during the townsperson round 
+everyone can talk and choose a person to mob. Upon elimination the user will be unable to act but can watch the game
+unfold with full knowledge of all the users roles. The managment of the game shall be handled by the server, with it
+timing and ending the rounds by broadcasting instructions to the client, such as removing their ability to talk. The server 
+can boot players it deems disruptive and ban their IP and port number by entering them into a blacklist.
+
+

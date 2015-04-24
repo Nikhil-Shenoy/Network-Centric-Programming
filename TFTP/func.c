@@ -19,7 +19,6 @@
 #define DATA_PACK_LEN 516
 #define DATA_LEN 512
 
-State packState;
 uint16_t blockNum;
 
 
@@ -182,7 +181,7 @@ This function constructs a data packet and sends it to the client
 */
 
 
-int sendDataPacket(int sockfd, int replyfd, int blockNum, char *data, struct sockaddr_in *cliPtr, socklen_t clilen, struct sockaddr_in *servPtr) {
+int sendDataPacket(int replyfd, int blockNum, char *data, struct sockaddr_in *cliPtr, socklen_t clilen, struct sockaddr_in *servPtr) {
 
 	int packetSize;
 	packetSize = 4 + strlen(data);
@@ -252,29 +251,46 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr, struct sockaddr_in *servPtr)
 		memset(&clilen,'\0',sizeof(socklen_t));
 		clilen = sizeof(*cliPtr);
 
+		// Create a new socket for every new client
+		int sockfd;
+		sockfd = socket(AF_INET,SOCK_DGRAM,0);
+
+		// bind the socket
+		if(bind(sockfd,(struct sockaddr *)servPtr,sizeof(*servPtr)) == -1) {
+			perror("bind");
+			continue;
+		}			
+
+		
 		int received;
 		received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
 		memcpy(newRequest.buffer,mesg,MAXLINE);
 		error = organizeRequest(reqRef);
 
-		// Need to check if file exists
-		if(!checkForFile(reqRef->filename)) {
-			sendErrorPacket(sockfd,*cliPtr,clilen);
-			received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
-			blockNum = 1;
-			memset(mesg,'\0',MAXLINE);
-			memset(oldData,'\0',DATA_LEN);
-			memset(data,'\0',DATA_LEN);
-			bzero(reqRef,sizeof(Request));
-			continue;
-		} else
-			fd = open(reqRef->filename,O_RDONLY);
-
+	
 		// Loop for each request within file
 		k = 512;
 		int replyfd;
 		while(k == 512) {
-		
+			int received;
+			received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
+			memcpy(newRequest.buffer,mesg,MAXLINE);
+			error = organizeRequest(reqRef);
+
+			if(reqRef->opcode == 1) {	
+				// Need to check if file exists
+				if(!checkForFile(reqRef->filename)) {
+					sendErrorPacket(sockfd,*cliPtr,clilen);
+					received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
+					blockNum = 1;
+					memset(mesg,'\0',MAXLINE);
+					memset(oldData,'\0',DATA_LEN);
+					memset(data,'\0',DATA_LEN);
+					bzero(reqRef,sizeof(Request));
+					continue;
+				} else
+					fd = open(reqRef->filename,O_RDONLY);
+			}
 			// Print the request	
 			printRequest(reqRef,cliPtr);
 			replyfd = socket(AF_INET,SOCK_DGRAM,0);	
@@ -285,7 +301,7 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr, struct sockaddr_in *servPtr)
 					strncpy(oldData,data,k);
 					oldData[k] = '\0';
 					// Construct packet and send
-					sendDataPacket(sockfd,replyfd,blockNum,data,cliPtr,clilen,servPtr);
+					sendDataPacket(replyfd,blockNum,data,cliPtr,clilen,servPtr);
 					memset(data,'\0',DATA_LEN);
 					break;
 				case 2:
@@ -300,7 +316,7 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr, struct sockaddr_in *servPtr)
 					strncpy(oldData,data,k);
 					oldData[k] = '\0';
 					// Construct packet and send
-					sendDataPacket(sockfd,replyfd,blockNum,data,cliPtr,clilen,servPtr);
+					sendDataPacket(replyfd,blockNum,data,cliPtr,clilen,servPtr);
 					memset(data,'\0',DATA_LEN);
 					break;
 
@@ -308,7 +324,7 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr, struct sockaddr_in *servPtr)
 					printf("Error packet. Retransmit previous packet\n");
 					// Construct packet and send
 					blockNum -= 1;
-					sendDataPacket(sockfd,replyfd,blockNum,oldData,cliPtr,clilen,servPtr);
+					sendDataPacket(replyfd,blockNum,oldData,cliPtr,clilen,servPtr);
 					break;
 				default:
 					fprintf(stderr,"Error: packet not recognized\n");
@@ -324,7 +340,7 @@ int newRead(int sockfd, struct sockaddr_in *cliPtr, struct sockaddr_in *servPtr)
 			printf("Waiting for next request...\n");	
 			memset(mesg,'\0',MAXLINE);
 			//received = recvfrom(sockfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
-			received = recvfrom(replyfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
+			//received = recvfrom(replyfd,mesg,MAXLINE,0,(struct sockaddr *)cliPtr,&clilen);
 
 			memcpy(newRequest.buffer,mesg,MAXLINE);
 			error = organizeRequest(reqRef);

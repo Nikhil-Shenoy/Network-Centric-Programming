@@ -1,0 +1,11 @@
+1) Server receives and verifies RRQ
+2) Open connection to client
+3) The server must receive an acknowledgement packet before sending the next data packet
+4) If data packet = 512 bytes --> not done
+	Else, done.
+5) If packet gets lost, recipient may timeout and retransmit his last packet, which causes the server to retransmit the lost packet
+	- Server should keep one packet on hand for retransmission
+
+1) Server receives and verifies RRQ
+2) Open connection to client
+3) The server must receive an acknowledgemen
