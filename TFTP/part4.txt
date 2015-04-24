@@ -1,0 +1,10 @@
+- Select waits for datagram socket to become ready, then returns. Called before recvfroma
+
+
+
+Basic outline:
+	1) Declare an fd_set variable
+	2) Set all the bits to zero using FD_ZERO
+	3) Set a bit in the read set using FD_SET
+	4) Use select to find out how many descriptors are ready.
+	5) If the file descriptor is in the readset, complete the transaction
