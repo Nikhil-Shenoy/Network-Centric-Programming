@@ -1,0 +1,13 @@
+						Vulnerabilities
+
+
+1) Line 117
+	- Threat Type: Denial of Service
+	- Explanation: I changed the sprintf function to snprintf and made sure that the right number of bytes were being written to the string. With the original implementation, the packet name could have been longer than the preset size of MAX_FILENAME_SIZE. There is no check afterwards to see whether the filename could be longer. Thus, a hacker could make his filename a little longer and then use stack smashing to take control of the machine. It may even be possible for the hacker to insert executable code in this way. Snprintf is safer because you read exactly the number of bytes in the path name, and you only do that if the size of the pathname is valid. Also, if the command is not entered properly, then the server could have a segmentation fault and everything could crash.
+
+2) Line 128
+	- Threat Type: Execution of Arbitrary Code
+	- Explanation: I changed the strcpy function to strncpy and made sure that the right number of bytes were being copied to the string. The original implementation would cause all characters to be written into the space pointed to by modeString, regardless of whether the mode is valid or not. Even though checks for mode are made right after the strcpy, there may have been more bytes written aside from the eight characters needed. These extra characters are still available in memory even after the loop continues, and could potentially cause problems in the future. This is an example of a buffer overflow. Following this vulnerabilty, the strcasecmp functions following the strncpy were changed to strncasecmp to compare against strings that were the same length as "octet" and "netascii". This ensures that no other bytes are checked and that the server will continue operation as expected.
+
+
+THERE'S GOT TO BE MORE ERRORS IN THIS THING!!!!!!!!!!!!!!!

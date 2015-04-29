@@ -1,0 +1,19 @@
+Watch for:
+	- gets(), strcpy(), strcat(), sprintf(), scanf()
+		- Remedy: Check input size first and then allocate the space
+		- Can use fgets, strncpy, strncat, and snprintf instead
+	- Buffer Overflows. Check for them by:
+		- Supplying long/incorrect inputs. If app segfaults, it could be vulnerable
+		- Inspect source for incorrect usage
+
+- Download the file tftpserver-vulnerable.c from Sakai and understand this implementation (it's also a solution for the previous homework)
+- Inspect the code and identify at least two different vulnerabilities. Create a file vulnerabilities.txt that contains a description of each vulnerability. For each vulnerability provide
+ + the line number(s) of the problematic code
+ + the type of vulnerability (e.g., confidentiality -- multiple types are possible)
+ + a one paragraph description or brief example of how this vulnerability could be exploited
+- Fix these vulnerabilities in the implementation. Try to make only minimal changes to the source code and mark each change with comments (// ***) in the source code. The corrected version should be contained in the file tftpserver-patched.c
+- Upload the two files vulnerabilities.txt and tftpserver-patched.c to the moodle.
+
+
+
+
